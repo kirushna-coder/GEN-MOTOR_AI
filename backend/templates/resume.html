@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Resume Analyzer – GenMentor AI{% endblock %}
+{% block page_title %}Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">Resume <span class="gradient-text">Analyzer</span></h1>
+  <p class="page-sub">Upload your resume and let AI evaluate and enhance it for your target role.</p>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card">
+    <h2 class="panel-title">Upload Resume</h2>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon" id="dropIcon">📄</div>
+      <p class="drop-text" id="dropText">Drag & drop your PDF here</p>
+      <span class="drop-or">or</span>
+      <label class="btn btn-ghost file-label" for="resumeFile">
+        Browse File
+        <input type="file" id="resumeFile" accept=".pdf" hidden />
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Target Job Role</label>
+      <input class="form-input" id="targetRole" type="text" placeholder="e.g. Full Stack Developer" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Paste Resume Text</label>
+      <textarea class="form-textarea" id="resumeText" rows="6" placeholder="Paste your resume content here..."></textarea>
+    </div>
+
+    <button class="btn btn-primary w-full" id="analyzeBtn" onclick="analyzeResume()">
+      🧠 Analyze with AI
+    </button>
+  </div>
+
+  <div class="tool-panel glass-card" id="resultPanel" style="display:none">
+    <h2 class="panel-title">Analysis Result</h2>
+    <div class="result-score-ring">
+      <svg viewBox="0 0 100 100" class="score-ring">
+        <circle cx="50" cy="50" r="40" class="ring-bg"/>
+        <circle cx="50" cy="50" r="40" class="ring-fill" id="scoreFill"/>
+      </svg>
+      <div class="score-center">
+        <span class="score-num" id="scoreNum">--</span>
+        <span class="score-label">Score</span>
+      </div>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('resumeFile');
+  const dropText = document.getElementById('dropText');
+  const resumeText = document.getElementById('resumeText');
+
+  // Handle file selection via input
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  // Handle drag and drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#8B5CF6';
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '';
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  async function handleFile(file) {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      dropText.innerHTML = `<span style="color: #10B981;">Uploaded: ${file.name}</span> <br/> <small>Extracting text...</small>`;
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ');
+          fullText += pageText + '\\n';
+        }
+        resumeText.value = fullText;
+        dropText.innerHTML = `<span style="color: #10B981;">Uploaded: ${file.name}</span> <br/> <small>Text extracted successfully!</small>`;
+      } catch (err) {
+        dropText.innerHTML = `<span style="color: #EF4444;">Error extracting PDF</span>`;
+        console.error(err);
+      }
+    } else {
+      dropText.innerHTML = `<span style="color: #F59E0B;">Uploaded: ${file.name}</span> <br/> <small>Please copy-paste the text manually if not a PDF.</small>`;
+    }
+  }
+});
+
+async function analyzeResume() {
+  const role = document.getElementById('targetRole').value || 'General';
+  const text = document.getElementById('resumeText').value;
+
+  if (!text.trim()) { alert('Please paste your resume text or upload a PDF.'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.textContent = '⏳ Analyzing...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/analyze-resume', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ role, text })
+    });
+    const json = await res.json();
+    
+    if (json.status === 'error') {
+      document.getElementById('scoreNum').textContent = '--';
+      document.getElementById('scoreFill').style.strokeDashoffset = 251;
+      document.getElementById('resultPanel').style.display = 'flex';
+      document.getElementById('resultBody').innerHTML = `<p class="result-message" style="color: #EF4444;">Error: ${json.message}</p>`;
+      return;
+    }
+    const d = json.data || {};
+
+    const score = d.score || 0;
+    const circumference = 251;
+    const offset = circumference - (circumference * score / 100);
+
+    document.getElementById('scoreNum').textContent = score;
+    document.getElementById('scoreFill').style.strokeDashoffset = offset;
+    document.getElementById('resultPanel').style.display = 'flex';
+
+    let html = '';
+    if (Array.isArray(d.strengths)) {
+      html += d.strengths.map(s => `<div class="result-tag positive">✅ ${s}</div>`).join('');
+    }
+    if (Array.isArray(d.improvements)) {
+      html += d.improvements.map(s => `<div class="result-tag warn">⚠️ ${s}</div>`).join('');
+    }
+    if (d.summary) {
+      html += `<p class="result-message">${d.summary}</p>`;
+    }
+    if (typeof d === 'string') {
+      html = `<p class="result-message">${d}</p>`;
+    }
+    document.getElementById('resultBody').innerHTML = html;
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '🧠 Analyze with AI';
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

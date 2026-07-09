@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Skill Gap Analysis – GenMentor AI{% endblock %}
+{% block page_title %}Skill Gap Analysis{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">Skill Gap <span class="gradient-text">Analysis</span></h1>
+  <p class="page-sub">Discover what skills you need to learn and get a personalised plan.</p>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card">
+    <h2 class="panel-title">Analyze Your Skills</h2>
+
+    <div class="form-group">
+      <label class="form-label">Your Current Skills</label>
+      <textarea class="form-textarea" id="currentSkills" rows="4" placeholder="e.g. HTML, CSS, JavaScript, Python, Git"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Target Role</label>
+      <select class="form-input" id="targetRoleSkill">
+        <option value="">Select a role...</option>
+        <option>Full Stack Developer</option>
+        <option>Data Scientist</option>
+        <option>Machine Learning Engineer</option>
+        <option>DevOps Engineer</option>
+        <option>Cloud Architect</option>
+        <option>Cybersecurity Analyst</option>
+        <option>Mobile Developer</option>
+        <option>Backend Developer</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Experience Level</label>
+      <div class="radio-group">
+        {% for level in ["Fresher","1-2 Years","3-5 Years","5+ Years"] %}
+        <label class="radio-label">
+          <input type="radio" name="exp" value="{{ level }}" {% if level == 'Fresher' %}checked{% endif %} />
+          {{ level }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-full" id="skillBtn" onclick="analyzeSkills()">⚡ Analyze Skill Gap</button>
+  </div>
+
+  <div class="tool-panel glass-card" id="skillResult" style="display:none">
+    <h2 class="panel-title">Gap Analysis</h2>
+
+    <div id="skillLoading" style="display:none; text-align: center; padding: 2rem;">
+      <div style="font-size: 3rem; animation: pulse 1.5s infinite;">⏳</div>
+      <h3 style="margin-top: 1rem;">Analyzing your skill gap...</h3>
+    </div>
+
+    <div class="skill-overview" id="skillOverview" style="display:none;">
+      <div class="skill-meter">
+        <svg viewBox="0 0 100 100" class="score-ring">
+          <circle cx="50" cy="50" r="40" class="ring-bg"/>
+          <circle cx="50" cy="50" r="40" class="ring-fill" id="skillScoreFill"/>
+        </svg>
+        <div class="score-center">
+          <span class="score-num" id="skillScoreNum">--</span>
+          <span class="score-label">Readiness</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="skill-sections" id="skillSections"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.extra-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.extra-card { background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; }
+.extra-card h4 { margin-top: 0; margin-bottom: 0.5rem; color: #8B5CF6; }
+.extra-card ul { margin: 0; padding-left: 1.2rem; color: var(--text-secondary); font-size: 0.9rem; }
+.extra-card li { margin-bottom: 0.25rem; }
+</style>
+<script>
+async function analyzeSkills() {
+  const skills = document.getElementById('currentSkills').value;
+  const role = document.getElementById('targetRoleSkill').value;
+  const experience = document.querySelector('input[name="exp"]:checked').value;
+
+  if (!skills.trim()) { alert('Please enter your current skills.'); return; }
+  if (!role) { alert('Please select a target role.'); return; }
+
+  const btn = document.getElementById('skillBtn');
+  btn.textContent = '⏳ Analyzing...';
+  btn.disabled = true;
+
+  document.getElementById('skillResult').style.display = 'flex';
+  document.getElementById('skillOverview').style.display = 'none';
+  document.getElementById('skillSections').innerHTML = '';
+  document.getElementById('skillLoading').style.display = 'block';
+
+  try {
+    const res = await fetch('/api/skill-gap', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ skills, role, experience })
+    });
+    const json = await res.json();
+    
+    if (json.status === 'error') {
+      document.getElementById('skillLoading').style.display = 'none';
+      document.getElementById('skillSections').innerHTML = `<p style="color:#EF4444; text-align: center; margin-top: 1rem;">Error: ${json.message}</p>`;
+      return;
+    }
+    const d = json.data || {};
+
+    const readiness = d.readiness || 0;
+    const circumference = 251;
+    const offset = circumference - (circumference * readiness / 100);
+
+    document.getElementById('skillScoreNum').textContent = readiness + '%';
+    document.getElementById('skillScoreFill').style.strokeDashoffset = offset;
+
+    let html = '';
+    if (Array.isArray(d.strengths) && d.strengths.length) {
+      html += `<div class="skill-group"><h3 class="skill-group-title positive-text">✅ Your Strengths</h3>`;
+      html += d.strengths.map(s => `
+        <div class="skill-bar-row">
+          <span class="skill-name">${s.name}</span>
+          <div class="skill-bar"><div class="skill-bar-fill strong" style="width:${s.level}%"></div></div>
+          <span class="skill-pct">${s.level}%</span>
+        </div>
+      `).join('');
+      html += `</div>`;
+    }
+    if (Array.isArray(d.gaps) && d.gaps.length) {
+      html += `<div class="skill-group"><h3 class="skill-group-title warn-text">⚠️ Skills to Learn</h3>`;
+      html += d.gaps.map(s => `
+        <div class="skill-bar-row">
+          <span class="skill-name">${s.name}</span>
+          <div class="skill-bar"><div class="skill-bar-fill gap" style="width:${Math.max(s.level, 5)}%"></div></div>
+          <span class="skill-pct">${s.level}%</span>
+        </div>
+      `).join('');
+      html += `</div>`;
+    }
+    if (d.advice) {
+      html += `<p class="result-message" style="margin-top:16px">${d.advice}</p>`;
+    }
+
+    const renderExtraList = (title, items) => {
+      if (!Array.isArray(items) || items.length === 0) return '';
+      return `<div class="extra-card"><h4>${title}</h4><ul>${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+    };
+
+    html += `<div class="extra-grid">`;
+    html += renderExtraList('📅 Weekly Plan', d.weekly_plan);
+    html += renderExtraList('📚 Courses', d.courses);
+    html += renderExtraList('🏆 Certifications', d.certifications);
+    html += renderExtraList('🚀 Projects', d.projects);
+    html += renderExtraList('🎤 Interview Topics', d.interview_topics);
+    if (d.time_estimate) {
+      html += `<div class="extra-card"><h4>⏳ Estimated Time</h4><p style="color:var(--text-secondary);font-size:0.9rem;margin:0;">${d.time_estimate}</p></div>`;
+    }
+    html += `</div>`;
+
+    if (typeof d === 'string') {
+      html = `<p class="result-message">${d}</p>`;
+    }
+
+    document.getElementById('skillLoading').style.display = 'none';
+    document.getElementById('skillOverview').style.display = 'flex';
+    document.getElementById('skillSections').innerHTML = html;
+  } catch(e) {
+    document.getElementById('skillLoading').style.display = 'none';
+    document.getElementById('skillSections').innerHTML = `<p style="color:#EF4444;">Error: ${e.message}</p>`;
+  } finally {
+    btn.textContent = '⚡ Analyze Skill Gap';
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

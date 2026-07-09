@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}AI Projects – GenMentor AI{% endblock %}
+{% block page_title %}AI Projects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">AI Project <span class="gradient-text">Generator</span></h1>
+  <p class="page-sub">Get project ideas that match your skills and stand out to recruiters.</p>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card">
+    <h2 class="panel-title">Generate Project Ideas</h2>
+
+    <div class="form-group">
+      <label class="form-label">Your Tech Stack</label>
+      <input class="form-input" id="techStack" type="text" placeholder="e.g. Python, React, MongoDB" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Difficulty Level</label>
+      <div class="radio-group">
+        {% for d in ["Beginner","Intermediate","Advanced"] %}
+        <label class="radio-label">
+          <input type="radio" name="difficulty" value="{{ d }}" {% if d == 'Intermediate' %}checked{% endif %} />
+          {{ d }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Project Domain</label>
+      <select class="form-input" id="domain">
+        <option>Any</option>
+        <option>Healthcare</option>
+        <option>Finance</option>
+        <option>Education</option>
+        <option>E-Commerce</option>
+        <option>Social Media</option>
+        <option>AI/ML</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary w-full" id="projectBtn" onclick="generateProjects()">🚀 Generate Projects</button>
+  </div>
+
+  <div class="tool-panel" id="projectsGrid" style="display:none">
+    <h2 class="panel-title">Project Ideas</h2>
+    <div class="projects-cards" id="projectCards"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function generateProjects() {
+  const stack = document.getElementById('techStack').value || 'Python, React';
+  const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+  const domain = document.getElementById('domain').value;
+
+  const btn = document.getElementById('projectBtn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate-project', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ stack, difficulty, domain })
+    });
+    const json = await res.json();
+
+    if (json.status === 'error' || !Array.isArray(json.data)) {
+      const errMsg = json.message || 'Could not generate projects. Please try again.';
+      document.getElementById('projectCards').innerHTML = `<p class="result-message" style="color: #EF4444; text-align: center; width: 100%;">${errMsg}</p>`;
+    } else {
+      const projects = json.data;
+      document.getElementById('projectCards').innerHTML = projects.map(p => `
+        <div class="project-card glass-card" style="cursor: pointer;" onclick="openProjectDetails('${encodeURIComponent(p.title || '')}', '${encodeURIComponent(p.desc || '')}', '${encodeURIComponent((p.tags || []).join(','))}', '${encodeURIComponent(stack)}')">
+          <div class="project-icon">${p.icon || '🚀'}</div>
+          <h3 class="project-name">${p.title || ''}</h3>
+          <p class="project-desc">${p.desc || ''}</p>
+          <div class="project-tags">${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('projectsGrid').style.display = 'flex';
+    document.getElementById('projectsGrid').style.flexDirection = 'column';
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '🚀 Generate Projects';
+    btn.disabled = false;
+  }
+}
+
+function openProjectDetails(titleEnc, descEnc, tagsEnc, stackEnc) {
+  const title = decodeURIComponent(titleEnc);
+  sessionStorage.setItem('project_title', title);
+  sessionStorage.setItem('project_desc', decodeURIComponent(descEnc));
+  sessionStorage.setItem('project_tags', decodeURIComponent(tagsEnc));
+  sessionStorage.setItem('project_stack', decodeURIComponent(stackEnc));
+  
+  // Create a URL-friendly ID from the title
+  const projectId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  window.location.href = '/project/' + (projectId || 'details');
+}
+</script>
+{% endblock %}

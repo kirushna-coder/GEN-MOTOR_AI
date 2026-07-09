@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Career Roadmap – GenMentor AI{% endblock %}
+{% block page_title %}Career Roadmap{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">Career <span class="gradient-text">Roadmap</span></h1>
+  <p class="page-sub">Get a step-by-step personalised roadmap to your target role.</p>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card">
+    <h2 class="panel-title">Build Your Roadmap</h2>
+
+    <div class="form-group">
+      <label class="form-label">Target Role</label>
+      <select class="form-input" id="targetRoleRoadmap">
+        <option value="">Select a role...</option>
+        <option>Full Stack Developer</option>
+        <option>Data Scientist</option>
+        <option>Machine Learning Engineer</option>
+        <option>DevOps Engineer</option>
+        <option>Cloud Architect</option>
+        <option>Cybersecurity Analyst</option>
+        <option>Product Manager</option>
+        <option>UI/UX Designer</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Current Skill Level</label>
+      <div class="radio-group">
+        {% for level in ["Beginner","Intermediate","Advanced"] %}
+        <label class="radio-label">
+          <input type="radio" name="level" value="{{ level }}" {% if level == 'Beginner' %}checked{% endif %} />
+          {{ level }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Timeline Goal</label>
+      <select class="form-input" id="timeline">
+        <option>3 months</option>
+        <option>6 months</option>
+        <option selected>1 year</option>
+        <option>2 years</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary w-full" id="roadmapBtn" onclick="generateRoadmap()">🗺️ Generate Roadmap</button>
+  </div>
+
+  <div class="tool-panel glass-card" id="roadmapResult" style="display:none">
+    <h2 class="panel-title">Your Roadmap</h2>
+    <div class="roadmap-timeline" id="roadmapTimeline"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function generateRoadmap() {
+  const role = document.getElementById('targetRoleRoadmap').value;
+  if (!role) { alert('Please select a target role.'); return; }
+  const level = document.querySelector('input[name="level"]:checked').value;
+  const timeline = document.getElementById('timeline').value;
+
+  const btn = document.getElementById('roadmapBtn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate-roadmap', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ role, level, timeline })
+    });
+    const json = await res.json();
+
+    if (json.status === 'error' || !Array.isArray(json.data)) {
+      const errMsg = json.message || 'Could not generate roadmap. Please try again.';
+      document.getElementById('roadmapTimeline').innerHTML = `<p class="result-message" style="color: #EF4444; text-align: center; width: 100%;">${errMsg}</p>`;
+      document.getElementById('roadmapResult').style.display = 'flex';
+      return;
+    }
+    const steps = json.data;
+
+    const colors = ['purple','cyan','pink','purple','cyan','pink'];
+    document.getElementById('roadmapTimeline').innerHTML = steps.map((s, i) => `
+      <div class="roadmap-step">
+        <div class="roadmap-node">
+          <div class="roadmap-dot ${colors[i % colors.length]}"></div>
+          <div class="roadmap-line ${i < steps.length-1 ? '' : 'hidden'}"></div>
+        </div>
+        <div class="roadmap-content glass-card-sm">
+          <span class="roadmap-phase">${s.phase || 'Phase ' + (i+1)}</span>
+          <h3 class="roadmap-title">${s.title || ''}</h3>
+          <ul class="roadmap-items">${(s.items || []).map(it => `<li>${it}</li>`).join('')}</ul>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('roadmapResult').style.display = 'flex';
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '🗺️ Generate Roadmap';
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

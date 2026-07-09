@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Project Concept – GenMentor AI{% endblock %}
+{% block page_title %}Project Concept{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+  <a href="/projects" class="btn btn-ghost" style="padding-left: 0; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 0.5rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    Back to Projects
+  </a>
+</div>
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 class="page-h1" id="pageTitle">Project <span class="gradient-text">Concept</span></h1>
+    <p class="page-sub" id="pageDesc">Generating comprehensive technical breakdown...</p>
+  </div>
+  <button class="btn btn-primary" id="downloadBtn" onclick="downloadDocs()" style="display:none;">
+    📄 Download Docs
+  </button>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card" id="loadingState">
+    <div style="text-align: center; padding: 3rem 1rem;">
+      <div style="font-size: 3rem; animation: pulse 1.5s infinite;">🧠</div>
+      <h3 style="margin-top: 1rem;">AI is architecting your project...</h3>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem;">This may take up to 20 seconds as we generate database schemas, API designs, and a full development roadmap.</p>
+    </div>
+  </div>
+
+  <div id="contentState" style="display:none; width: 100%; display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Overview Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title" style="margin-bottom: 0.5rem;">Explanation</h3>
+        <p id="c_explanation" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title" style="margin-bottom: 0.5rem;">Problem Statement</h3>
+        <p id="c_problem" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title" style="margin-bottom: 0.5rem;">Use Case</h3>
+        <p id="c_usecase" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="glass-card">
+      <h3 class="panel-title">Tech Stack</h3>
+      <div id="c_tech_stack" style="display: flex; flex-wrap: wrap; gap: 1rem;"></div>
+    </div>
+
+    <!-- Architecture & Structure -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title">Architecture</h3>
+        <p id="c_architecture" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title">Folder Structure</h3>
+        <pre id="c_folder" style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; font-family: monospace; color: #E5E7EB;"></pre>
+      </div>
+    </div>
+
+    <!-- DB & API -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title">Database Schema</h3>
+        <pre id="c_db" style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; font-family: monospace; color: #E5E7EB;"></pre>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title">API Design</h3>
+        <div id="c_api" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- UI & Roadmap -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title">UI Design Preview</h3>
+        <p id="c_ui" style="color: var(--text-secondary); line-height: 1.6;"></p>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title">Development Roadmap</h3>
+        <ul id="c_roadmap" style="color: var(--text-secondary); line-height: 1.6; padding-left: 1.5rem;"></ul>
+      </div>
+    </div>
+
+    <!-- Milestones & Future -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title">Milestones</h3>
+        <ul id="c_milestones" style="color: var(--text-secondary); line-height: 1.6; padding-left: 1.5rem;"></ul>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title">Future Enhancements</h3>
+        <ul id="c_future" style="color: var(--text-secondary); line-height: 1.6; padding-left: 1.5rem;"></ul>
+      </div>
+    </div>
+
+    <!-- References & Modules -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+      <div class="glass-card">
+        <h3 class="panel-title">References</h3>
+        <ul id="c_refs" style="color: var(--text-secondary); line-height: 1.6; padding-left: 1.5rem;"></ul>
+      </div>
+      <div class="glass-card">
+        <h3 class="panel-title">Modules <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-secondary);">(Generate Source Code)</span></h3>
+        <div id="c_modules" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Code Modal -->
+<div id="codeModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div class="glass-card" style="width: 90%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h3 class="panel-title" id="modalTitle" style="margin: 0;">Generated Code</h3>
+      <button onclick="document.getElementById('codeModal').style.display='none'" style="background:none; border:none; color:white; font-size: 1.5rem; cursor:pointer;">&times;</button>
+    </div>
+    <div id="modalContent" style="flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #10B981;">
+      Loading...
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.module-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 6px; }
+.api-item { background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; }
+.api-method { font-weight: bold; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-right: 0.5rem; }
+.api-get { background: #3B82F6; color: white; }
+.api-post { background: #10B981; color: white; }
+.api-put { background: #F59E0B; color: white; }
+.api-delete { background: #EF4444; color: white; }
+</style>
+<script>
+let projectData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const title = sessionStorage.getItem('project_title');
+  const desc = sessionStorage.getItem('project_desc');
+  const stack = sessionStorage.getItem('project_stack');
+
+  if (!title) {
+    document.getElementById('pageTitle').innerHTML = `Project <span class="gradient-text">Not Found</span>`;
+    document.getElementById('pageDesc').textContent = 'Invalid project slug or expired session.';
+    document.getElementById('loadingState').innerHTML = `
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <h2 style="font-size: 2rem; color: #EF4444; margin-bottom: 1rem;">Project Not Found</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">The project you are looking for does not exist or your session expired.</p>
+        <a href="/projects" class="btn btn-primary">Return to Projects</a>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById('pageTitle').innerHTML = `${title} <span class="gradient-text">Concept</span>`;
+  document.getElementById('pageDesc').textContent = desc;
+
+  try {
+    const res = await fetch('/api/generate-project-concept', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, desc, stack })
+    });
+    const json = await res.json();
+    
+    if (json.status === 'error') {
+      document.getElementById('loadingState').innerHTML = `<h3 style="color:#EF4444;text-align:center;padding: 2rem;">Failed to generate concept: ${json.message}</h3>`;
+      return;
+    }
+    projectData = json.data;
+
+    renderData(projectData);
+    
+    document.getElementById('loadingState').style.display = 'none';
+    
+    const contentState = document.getElementById('contentState');
+    contentState.style.display = 'flex';
+    document.getElementById('downloadBtn').style.display = 'inline-block';
+    
+  } catch(e) {
+    document.getElementById('loadingState').innerHTML = `<h3 style="color:#EF4444;text-align:center;">Failed to generate concept: ${e.message}</h3>`;
+  }
+});
+
+function renderData(d) {
+  document.getElementById('c_explanation').textContent = d.explanation || 'N/A';
+  document.getElementById('c_problem').textContent = d.problem_statement || 'N/A';
+  document.getElementById('c_usecase').textContent = d.use_case || 'N/A';
+  document.getElementById('c_architecture').textContent = d.architecture || 'N/A';
+  document.getElementById('c_folder').textContent = d.folder_structure || 'N/A';
+  document.getElementById('c_db').textContent = typeof d.database_schema === 'object' ? JSON.stringify(d.database_schema, null, 2) : (d.database_schema || 'N/A');
+  document.getElementById('c_ui').textContent = d.ui_design || 'N/A';
+
+  // Tech Stack
+  if(Array.isArray(d.tech_stack)) {
+    document.getElementById('c_tech_stack').innerHTML = d.tech_stack.map(ts => 
+      `<div style="display:flex; align-items:center; gap:0.5rem; background:rgba(255,255,255,0.1); padding:0.5rem 1rem; border-radius:20px;">
+        <span>${ts.icon}</span> <span>${ts.name}</span>
+      </div>`
+    ).join('');
+  }
+
+  // API Design
+  if(Array.isArray(d.api_design)) {
+    document.getElementById('c_api').innerHTML = d.api_design.map(a => {
+      let mClass = 'api-get';
+      if(a.method === 'POST') mClass = 'api-post';
+      if(a.method === 'PUT') mClass = 'api-put';
+      if(a.method === 'DELETE') mClass = 'api-delete';
+      return `<div class="api-item">
+        <div style="margin-bottom:0.25rem;"><span class="api-method ${mClass}">${a.method}</span> <code style="color:#A78BFA">${a.endpoint}</code></div>
+        <div style="font-size:0.9rem; color:var(--text-secondary);">${a.description}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Lists
+  const renderList = (id, arr) => {
+    if(Array.isArray(arr)) {
+      document.getElementById(id).innerHTML = arr.map(i => `<li>${i}</li>`).join('');
+    }
+  };
+  renderList('c_roadmap', d.roadmap);
+  renderList('c_milestones', d.milestones);
+  renderList('c_future', d.future_enhancements);
+  renderList('c_refs', d.references);
+
+  // Modules
+  if(Array.isArray(d.modules)) {
+    document.getElementById('c_modules').innerHTML = d.modules.map(m => `
+      <div class="module-item">
+        <span>${m}</span>
+        <button class="btn btn-ghost" style="padding:0.4rem 0.8rem; font-size:0.8rem; border: 1px solid var(--border-color);" onclick="generateCode('${encodeURIComponent(m)}')">&lt;/&gt; Code</button>
+      </div>
+    `).join('');
+  }
+}
+
+async function generateCode(moduleNameEnc) {
+  const moduleName = decodeURIComponent(moduleNameEnc);
+  const modal = document.getElementById('codeModal');
+  const modalContent = document.getElementById('modalContent');
+  document.getElementById('modalTitle').textContent = `Code: ${moduleName}`;
+  modalContent.textContent = 'Generating code with AI... please wait.';
+  modal.style.display = 'flex';
+
+  try {
+    const title = sessionStorage.getItem('project_title');
+    const stack = sessionStorage.getItem('project_stack');
+    const res = await fetch('/api/generate-module-code', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, stack, module: moduleName })
+    });
+    const json = await res.json();
+    if (json.status === 'error') {
+      modalContent.innerHTML = `<span style="color:#EF4444;">Error: ${json.message}</span>`;
+      return;
+    }
+    modalContent.textContent = json.data || 'No code generated.';
+  } catch(e) {
+    modalContent.textContent = `Error: ${e.message}`;
+  }
+}
+
+function downloadDocs() {
+  if(!projectData) return;
+  const title = sessionStorage.getItem('project_title') || 'Project';
+  
+  let md = `# ${title} - Technical Documentation\n\n`;
+  md += `## Explanation\n${projectData.explanation}\n\n`;
+  md += `## Problem Statement\n${projectData.problem_statement}\n\n`;
+  md += `## Use Case\n${projectData.use_case}\n\n`;
+  md += `## Architecture\n${projectData.architecture}\n\n`;
+  md += `## Folder Structure\n\`\`\`\n${projectData.folder_structure}\n\`\`\`\n\n`;
+  md += `## Database Schema\n\`\`\`json\n${typeof projectData.database_schema === 'object' ? JSON.stringify(projectData.database_schema, null, 2) : projectData.database_schema}\n\`\`\`\n\n`;
+  
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\\s+/g, '_')}_Docs.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

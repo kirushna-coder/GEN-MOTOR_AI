@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+{% block title %}Mock Interview – GenMentor AI{% endblock %}
+{% block page_title %}Mock Interview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">Mock <span class="gradient-text">Interview</span></h1>
+  <p class="page-sub">Practice with AI-generated questions and receive instant feedback.</p>
+</div>
+
+<div class="tool-layout">
+  <div class="tool-panel glass-card">
+    <h2 class="panel-title">Configure Interview</h2>
+
+    <div class="form-group">
+      <label class="form-label">Interview Type</label>
+      <select class="form-input" id="interviewType">
+        <option>Technical</option>
+        <option>Behavioral</option>
+        <option>System Design</option>
+        <option>HR Round</option>
+        <option>Viva / Oral Exam</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Topic / Subject</label>
+      <input class="form-input" id="interviewTopic" type="text" placeholder="e.g. Python OOP, React Hooks" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Number of Questions</label>
+      <div class="radio-group">
+        {% for n in [5,10,15] %}
+        <label class="radio-label">
+          <input type="radio" name="qcount" value="{{ n }}" {% if n == 5 %}checked{% endif %} />
+          {{ n }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Difficulty</label>
+      <select class="form-input" id="interviewDifficulty">
+        <option>Easy</option>
+        <option selected>Medium</option>
+        <option>Hard</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary w-full" id="startBtn" onclick="startInterview()">🎤 Start Interview</button>
+  </div>
+
+  <div class="tool-panel glass-card" id="interviewPanel" style="display:none">
+    <h2 class="panel-title">Interview Session</h2>
+
+    <div class="interview-progress" id="interviewProgress"></div>
+    <div class="interview-question" id="interviewQuestion"></div>
+
+    <div class="form-group" id="answerGroup">
+      <label class="form-label">Your Answer</label>
+      <textarea class="form-textarea" id="answerInput" rows="5" placeholder="Type your answer here..." oninput="checkInput()"></textarea>
+    </div>
+
+    <div class="interview-actions" id="interviewActions" style="display:flex; gap:1rem;">
+      <button class="btn btn-ghost" id="skipBtn" onclick="skipAnswer()">Skip →</button>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitAnswer()" disabled style="flex:1">Submit Answer</button>
+    </div>
+  </div>
+
+  <div class="tool-panel glass-card" id="summaryPanel" style="display:none; flex-direction:column;">
+    <!-- Built dynamically -->
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+</style>
+<script>
+/* ─── Interview State ──────────────────────────────────────────────── */
+let questions = [];
+let currentQ = 0;
+let totalQ = 0;
+let userAnswers = [];
+let isProcessing = false; // Prevent double-clicks
+
+/* ─── Start Interview ──────────────────────────────────────────────── */
+async function startInterview() {
+  const type = document.getElementById('interviewType').value;
+  const topic = document.getElementById('interviewTopic').value || 'General Programming';
+  const count = parseInt(document.querySelector('input[name="qcount"]:checked').value);
+  const difficulty = document.getElementById('interviewDifficulty').value;
+
+  console.log(`[INTERVIEW] Starting: type=${type}, topic=${topic}, count=${count}, difficulty=${difficulty}`);
+
+  const btn = document.getElementById('startBtn');
+  btn.textContent = '⏳ Generating Questions...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/mock-interview', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ type, topic, count, difficulty })
+    });
+    const json = await res.json();
+    console.log(`[INTERVIEW] API response status: ${json.status}, questions received: ${Array.isArray(json.data) ? json.data.length : 'N/A'}`);
+
+    if (json.status === 'error' || !Array.isArray(json.data)) {
+      alert(json.message || 'Could not generate questions. Please try again.');
+      return;
+    }
+
+    questions = json.data;
+    totalQ = questions.length;
+    currentQ = 0;
+    userAnswers = [];
+    isProcessing = false;
+
+    console.log(`[INTERVIEW] Loaded ${totalQ} questions. Starting from Q1.`);
+
+    document.getElementById('summaryPanel').style.display = 'none';
+    document.getElementById('interviewPanel').style.display = 'flex';
+    document.getElementById('answerGroup').style.display = '';
+    document.getElementById('interviewActions').style.display = 'flex';
+    showQuestion();
+  } catch(e) {
+    console.error('[INTERVIEW] Fetch error:', e);
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '🎤 Start Interview';
+    btn.disabled = false;
+  }
+}
+
+/* ─── Input Check ──────────────────────────────────────────────────── */
+function checkInput() {
+  const text = document.getElementById('answerInput').value;
+  document.getElementById('submitBtn').disabled = text.trim().length === 0 || isProcessing;
+}
+
+/* ─── Show Current Question ────────────────────────────────────────── */
+function showQuestion() {
+  if (currentQ >= totalQ) {
+    console.log(`[INTERVIEW] currentQ(${currentQ}) >= totalQ(${totalQ}), finishing.`);
+    finishInterview();
+    return;
+  }
+
+  const qObj = questions[currentQ];
+  if (!qObj) {
+    console.error(`[INTERVIEW] ERROR: questions[${currentQ}] is undefined! questions.length=${questions.length}`);
+    finishInterview();
+    return;
+  }
+
+  const progressPct = (currentQ / totalQ) * 100;
+  console.log(`[INTERVIEW] Showing Q${currentQ + 1}/${totalQ} (progress: ${progressPct.toFixed(0)}%)`);
+
+  document.getElementById('interviewProgress').innerHTML = `
+    <span class="progress-text">Question ${currentQ + 1} of ${totalQ}</span>
+    <div class="progress-bar"><div class="progress-fill" style="width:${progressPct}%"></div></div>
+  `;
+  document.getElementById('interviewQuestion').innerHTML = `
+    <div class="question-number">Q${currentQ + 1}</div>
+    <p class="question-text">${qObj.q}</p>
+    <span class="question-hint">💡 Hint: ${qObj.hint || ''}</span>
+  `;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('answerInput').disabled = false;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').innerHTML = 'Submit Answer';
+  document.getElementById('skipBtn').disabled = false;
+  isProcessing = false;
+}
+
+/* ─── Submit Answer ────────────────────────────────────────────────── */
+async function submitAnswer() {
+  if (isProcessing) {
+    console.warn('[INTERVIEW] submitAnswer() blocked — already processing.');
+    return;
+  }
+  isProcessing = true;
+
+  const answer = document.getElementById('answerInput').value;
+  const qObj = questions[currentQ];
+
+  console.log(`[INTERVIEW] Submitting answer for Q${currentQ + 1}/${totalQ}: "${answer.substring(0, 40)}..."`);
+
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '⏳ Evaluating...';
+  btn.disabled = true;
+  document.getElementById('skipBtn').disabled = true;
+  document.getElementById('answerInput').disabled = true;
+
+  let evaluation = {
+    is_correct: false,
+    score: 0,
+    strengths: [],
+    improvements: [],
+    feedback: 'Evaluation failed — answer recorded as-is.'
+  };
+
+  try {
+    const res = await fetch('/api/evaluate-answer', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ question: qObj.q, answer })
+    });
+    const json = await res.json();
+    console.log(`[INTERVIEW] Evaluate response for Q${currentQ + 1}:`, json.status);
+
+    if (json.status === 'success' && json.data) {
+      evaluation = json.data;
+    } else {
+      console.warn(`[INTERVIEW] Evaluate returned error: ${json.message}`);
+      evaluation.feedback = json.message || 'Could not evaluate this answer.';
+    }
+  } catch(e) {
+    console.error(`[INTERVIEW] Evaluate fetch error for Q${currentQ + 1}:`, e);
+    evaluation.feedback = 'Network error during evaluation: ' + e.message;
+  }
+
+  // ALWAYS record the answer and advance — never get stuck
+  userAnswers.push({
+    q: qObj.q,
+    a: answer,
+    evaluation: evaluation,
+    skipped: false
+  });
+
+  console.log(`[INTERVIEW] Answer recorded. Total answers: ${userAnswers.length}/${totalQ}`);
+  advanceToNext();
+}
+
+/* ─── Skip Answer ──────────────────────────────────────────────────── */
+function skipAnswer() {
+  if (isProcessing) {
+    console.warn('[INTERVIEW] skipAnswer() blocked — already processing.');
+    return;
+  }
+  isProcessing = true;
+
+  const qObj = questions[currentQ];
+  console.log(`[INTERVIEW] Skipping Q${currentQ + 1}/${totalQ}`);
+
+  userAnswers.push({
+    q: qObj.q,
+    a: "Skipped",
+    evaluation: { is_correct: false, score: 0, feedback: "Question was skipped." },
+    skipped: true
+  });
+
+  console.log(`[INTERVIEW] Skip recorded. Total answers: ${userAnswers.length}/${totalQ}`);
+  advanceToNext();
+}
+
+/* ─── Advance to Next Question ─────────────────────────────────────── */
+function advanceToNext() {
+  currentQ++;
+  console.log(`[INTERVIEW] Advancing: currentQ is now ${currentQ}, totalQ is ${totalQ}`);
+
+  if (currentQ >= totalQ) {
+    console.log(`[INTERVIEW] All ${totalQ} questions completed. Finishing interview.`);
+    finishInterview();
+  } else {
+    showQuestion();
+  }
+}
+
+/* ─── Finish Interview & Show Summary ──────────────────────────────── */
+async function finishInterview() {
+  console.log(`[INTERVIEW] finishInterview() called. Answers collected: ${userAnswers.length}`);
+
+  // Fill progress bar to 100%
+  document.getElementById('interviewProgress').innerHTML = `
+    <span class="progress-text">Interview Complete ✅</span>
+    <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  `;
+
+  setTimeout(async () => {
+    document.getElementById('interviewPanel').style.display = 'none';
+    const summaryPanel = document.getElementById('summaryPanel');
+    summaryPanel.style.display = 'flex';
+    summaryPanel.innerHTML = `
+      <div style="text-align: center; padding: 3rem;">
+        <div style="font-size: 3rem; animation: pulse 1.5s infinite;">🧠</div>
+        <h3 style="margin-top: 1rem;">Generating Interview Summary...</h3>
+        <p style="color: var(--text-secondary); margin-top: 0.5rem;">Analyzed ${userAnswers.length} answers</p>
+      </div>
+    `;
+
+    let summary = {};
+    try {
+      const res = await fetch('/api/interview-summary', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ q_and_a: userAnswers })
+      });
+      const json = await res.json();
+      console.log('[INTERVIEW] Summary response:', json.status);
+
+      if (json.status === 'success' && json.data) {
+        summary = json.data;
+      } else {
+        console.warn('[INTERVIEW] Summary error:', json.message);
+        summary = {
+          overall_feedback: json.message || 'Could not generate AI summary.',
+          overall_strengths: ['Interview completed'],
+          areas_for_improvement: ['Try again with an API key for real feedback'],
+          suggested_resources: [],
+          recommended_topics: []
+        };
+      }
+    } catch(e) {
+      console.error('[INTERVIEW] Summary fetch error:', e);
+      summary = {
+        overall_feedback: 'Could not connect to the server for summary generation.',
+        overall_strengths: ['You completed the interview!'],
+        areas_for_improvement: ['Check your network connection'],
+        suggested_resources: [],
+        recommended_topics: []
+      };
+    }
+
+    // Calculate scores
+    let totalScore = 0;
+    let correct = 0;
+    let incorrect = 0;
+    let skipped = 0;
+
+    userAnswers.forEach(ans => {
+      if (ans.skipped) skipped++;
+      else {
+        totalScore += (ans.evaluation && ans.evaluation.score) || 0;
+        if (ans.evaluation && ans.evaluation.is_correct) correct++;
+        else incorrect++;
+      }
+    });
+
+    const answered = userAnswers.length - skipped;
+    const avgScore = answered > 0 ? Math.round(totalScore / answered) : 0;
+    console.log(`[INTERVIEW] Scores — avg:${avgScore}, correct:${correct}, incorrect:${incorrect}, skipped:${skipped}`);
+
+    let html = `
+      <h2 class="panel-title">Interview Summary</h2>
+
+      <div style="display:flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+        <div class="glass-card" style="flex:1; min-width:120px; text-align:center;">
+          <h3 style="font-size: 2rem; color: #8B5CF6; margin:0;">${avgScore}/10</h3>
+          <p style="color:var(--text-secondary); margin:0;">Avg Score</p>
+        </div>
+        <div class="glass-card" style="flex:1; min-width:120px; text-align:center;">
+          <h3 style="font-size: 2rem; color: #10B981; margin:0;">${correct}</h3>
+          <p style="color:var(--text-secondary); margin:0;">Correct</p>
+        </div>
+        <div class="glass-card" style="flex:1; min-width:120px; text-align:center;">
+          <h3 style="font-size: 2rem; color: #EF4444; margin:0;">${incorrect}</h3>
+          <p style="color:var(--text-secondary); margin:0;">Incorrect</p>
+        </div>
+        <div class="glass-card" style="flex:1; min-width:120px; text-align:center;">
+          <h3 style="font-size: 2rem; color: #F59E0B; margin:0;">${skipped}</h3>
+          <p style="color:var(--text-secondary); margin:0;">Skipped</p>
+        </div>
+        <div class="glass-card" style="flex:1; min-width:120px; text-align:center;">
+          <h3 style="font-size: 2rem; color: #06B6D4; margin:0;">${userAnswers.length}</h3>
+          <p style="color:var(--text-secondary); margin:0;">Total Questions</p>
+        </div>
+      </div>
+
+      <p style="font-size: 1.1rem; margin-bottom: 2rem; color: #E5E7EB;">${summary.overall_feedback || ''}</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="glass-card">
+          <h4 style="color:#10B981; margin-top:0;">🌟 Overall Strengths</h4>
+          <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+            ${(summary.overall_strengths || []).map(s => `<li>${s}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="glass-card">
+          <h4 style="color:#EF4444; margin-top:0;">📈 Areas for Improvement</h4>
+          <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+            ${(summary.areas_for_improvement || []).map(s => `<li>${s}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="glass-card">
+          <h4 style="color:#3B82F6; margin-top:0;">📚 Suggested Resources</h4>
+          <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+            ${(summary.suggested_resources || []).map(s => `<li>${s}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="glass-card">
+          <h4 style="color:#F59E0B; margin-top:0;">🎯 Recommended Topics</h4>
+          <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+            ${(summary.recommended_topics || []).map(s => `<li>${s}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom: 1rem;">Detailed Question Feedback</h3>
+      <div style="display:flex; flex-direction:column; gap: 1rem; margin-bottom: 2rem;">
+        ${userAnswers.map((ans, idx) => `
+          <div class="glass-card">
+            <div style="font-weight:bold; margin-bottom:0.5rem; color:#A78BFA;">Q${idx+1}: ${ans.q}</div>
+            <div style="background:rgba(255,255,255,0.05); padding:0.8rem; border-radius:6px; margin-bottom:0.5rem; color:#D1D5DB;">Your Answer: ${ans.a}</div>
+            ${ans.skipped ? `<div style="color:#F59E0B;">Question skipped.</div>` : `
+              <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                <span style="background:${ans.evaluation.is_correct ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color:${ans.evaluation.is_correct ? '#10B981' : '#EF4444'}; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.8rem;">
+                  ${ans.evaluation.is_correct ? 'Correct' : 'Incorrect'}
+                </span>
+                <span style="background:rgba(139,92,246,0.2); color:#8B5CF6; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.8rem;">Score: ${ans.evaluation.score || 0}/10</span>
+              </div>
+              <p style="color:var(--text-secondary); margin:0;">${ans.evaluation.feedback || ''}</p>
+            `}
+          </div>
+        `).join('')}
+      </div>
+
+      <button class="btn btn-primary" style="width:100%" onclick="restartInterview()">🔄 Restart Interview</button>
+    `;
+    summaryPanel.innerHTML = html;
+  }, 500);
+}
+
+/* ─── Restart Interview ────────────────────────────────────────────── */
+function restartInterview() {
+  questions = [];
+  currentQ = 0;
+  totalQ = 0;
+  userAnswers = [];
+  isProcessing = false;
+  document.getElementById('summaryPanel').style.display = 'none';
+  document.getElementById('interviewPanel').style.display = 'none';
+  window.scrollTo(0, 0);
+  console.log('[INTERVIEW] Interview reset. Ready for a new session.');
+}
+</script>
+{% endblock %}

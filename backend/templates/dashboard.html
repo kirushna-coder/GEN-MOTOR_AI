@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – GenMentor AI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-h1">Welcome back, <span class="gradient-text">Learner</span> 👋</h1>
+  <p class="page-sub">Here's your preparation progress at a glance.</p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+  {% for s in [
+    {"icon":"📄","label":"Resume Score","value":"88/100","delta":"+5","color":"purple"},
+    {"icon":"🎤","label":"Interviews Done","value":"12","delta":"+3","color":"cyan"},
+    {"icon":"🗺️","label":"Roadmap Progress","value":"62%","delta":"+12%","color":"pink"},
+    {"icon":"⚡","label":"Skills Learned","value":"8","delta":"+2","color":"purple"}
+  ] %}
+  <div class="stat-card glass-card stat-{{ s.color }}">
+    <div class="stat-card-icon {{ s.color }}">{{ s.icon }}</div>
+    <div class="stat-card-body">
+      <span class="stat-card-value">{{ s.value }}</span>
+      <span class="stat-card-label">{{ s.label }}</span>
+    </div>
+    <span class="stat-card-delta positive">{{ s.delta }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Quick Actions -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title">Quick Actions</h2>
+</div>
+<div class="quick-actions">
+  {% for action in [
+    {"icon":"📄","title":"Analyze Resume","href":"/resume","color":"purple"},
+    {"icon":"🗺️","title":"Build Roadmap","href":"/roadmap","color":"cyan"},
+    {"icon":"🚀","title":"Generate Project","href":"/projects","color":"pink"},
+    {"icon":"🎤","title":"Start Mock Interview","href":"/interview","color":"purple"}
+  ] %}
+  <a href="{{ action.href }}" class="quick-card glass-card quick-{{ action.color }}">
+    <span class="quick-icon {{ action.color }}">{{ action.icon }}</span>
+    <span class="quick-title">{{ action.title }}</span>
+    <span class="quick-arrow">→</span>
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Recent Activity -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title">Recent Activity</h2>
+</div>
+<div class="activity-list glass-card">
+  {% for item in [
+    {"icon":"📄","text":"Resume analyzed – 88% score","time":"2 hrs ago","color":"purple"},
+    {"icon":"🎤","text":"Completed Mock Interview – Python OOP","time":"Yesterday","color":"cyan"},
+    {"icon":"⚡","text":"Skill Gap identified – Docker, Kubernetes","time":"2 days ago","color":"pink"},
+    {"icon":"🗺️","title":"Career Roadmap created for Full Stack Developer","time":"3 days ago","color":"purple"}
+  ] %}
+  <div class="activity-item">
+    <div class="activity-icon {{ item.color }}">{{ item.icon }}</div>
+    <div class="activity-body">
+      <span class="activity-text">{{ item.text or item.title }}</span>
+      <span class="activity-time">{{ item.time }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

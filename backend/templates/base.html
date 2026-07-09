@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="GenMentor AI – Your AI-powered career and placement preparation platform" />
+  <title>{% block title %}GenMentor AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Sidebar Nav ─────────────────────────────────────────── -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">🧠</span>
+      <span class="logo-text">GenMentor <span class="logo-ai">AI</span></span>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="/"        class="nav-link {% if request.endpoint == 'index'     %}active{% endif %}"><span class="nav-icon">🏠</span><span>Home</span></a></li>
+      <li><a href="/dashboard" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"><span class="nav-icon">📊</span><span>Dashboard</span></a></li>
+      <li><a href="/resume"  class="nav-link {% if request.endpoint == 'resume'    %}active{% endif %}"><span class="nav-icon">📄</span><span>Resume Analyzer</span></a></li>
+      <li><a href="/roadmap" class="nav-link {% if request.endpoint == 'roadmap'   %}active{% endif %}"><span class="nav-icon">🗺️</span><span>Career Roadmap</span></a></li>
+      <li><a href="/projects" class="nav-link {% if request.endpoint == 'projects' %}active{% endif %}"><span class="nav-icon">🚀</span><span>AI Projects</span></a></li>
+      <li><a href="/skills"  class="nav-link {% if request.endpoint == 'skills'    %}active{% endif %}"><span class="nav-icon">⚡</span><span>Skill Gap</span></a></li>
+      <li><a href="/interview" class="nav-link {% if request.endpoint == 'interview' %}active{% endif %}"><span class="nav-icon">🎤</span><span>Mock Interview</span></a></li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar">G</div>
+        <div class="user-info">
+          <span class="user-name">Guest User</span>
+          <span class="user-role">Free Plan</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Mobile Topbar ──────────────────────────────────────────── -->
+  <header class="topbar" id="topbar">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="topbar-title">{% block page_title %}GenMentor AI{% endblock %}</span>
+    <div class="topbar-right">
+      <div class="status-dot"></div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ───────────────────────────────────────────── -->
+  <main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
