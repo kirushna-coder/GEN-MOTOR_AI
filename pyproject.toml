@@ -1,2 +1,17 @@
+[project]
+name = "gen-motor-ai"
+version = "0.1.0"
+description = "Gen-Motor AI backend"
+dependencies = [
+    "flask",
+    "flask-cors",
+    "python-dotenv",
+    "google-genai",
+    "firebase-admin",
+    "python-pptx",
+    "pymongo",
+    "motor"
+]
+
 [tool.vercel]
 entrypoint = "backend.main:app"
